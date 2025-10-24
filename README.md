@@ -9,6 +9,8 @@ Supports OME-Zarr version 0.4 and above.
 [`uv` is recommended](https://docs.astral.sh/uv/getting-started/installation/),
 although pipx or pip may work for your use case.
 
+Install the tool for your user  with `uv tool install https://github.com/clbarnes/ome_zarr_conformance.git`.
+
 Wrap your OME-Zarr metadata implementation in a CLI program which takes as an argument
 a JSON string representing the Zarr attributes of an OME-Zarr dataset (Zarr group).
 
@@ -30,18 +32,18 @@ The program should not error for invalid OME-Zarr metadata, but may error if mal
 For a program `path/to/my_implementation_wrapper`, call
 
 ```sh
-uv run --script ./ome_zarr_conformance.py path/to/my_implementation_wrapper
+ome-zarr-conformance path/to/my_implementation_wrapper
 ```
 
 to download all test cases and run them.
 Downloads are cached for subsequent runs.
 
-See `uv run --script ./ome_zarr_conformance.py --help` for further information (e.g. restricting to specific OME-Zarr versions).
+See `ome-zarr-conformance --help` for further information (e.g. restricting to specific OME-Zarr versions).
 
 If your CLI needs additional arguments, wrap the full call in quotes appropriate for your shell, e.g.
 
 ```sh
-uv run --script ./ome_zarr_conformance.py --ome-zarr-version 0.5 "path/to/my_implementation_wrapper -version v0.5 -quiet -fromJson"
+ome-zarr-conformance --ome-zarr-version 0.5 "path/to/my_implementation_wrapper -version v0.5 -quiet -fromJson"
 ```
 
 The quoted CLI call will be split according to POSIX rules,
