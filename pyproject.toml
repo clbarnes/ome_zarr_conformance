@@ -20,4 +20,4 @@ dev = [
 ]
 
 [project.scripts]
-ome_zarr_conformance = "ome_zarr_conformance.ome_zarr_conformance:main"
+ome-zarr-conformance = "ome_zarr_conformance.ome_zarr_conformance:main"
