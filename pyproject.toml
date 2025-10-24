@@ -7,11 +7,17 @@ requires-python = ">=3.13"
 dependencies = [
     "pooch>=1.8.2",
     "pydantic>=2.12.3",
-    "tqdm>=4.67.1",
 ]
+
+[build-system]
+requires = ["uv_build>=0.8.14,<0.9.0"]
+build-backend = "uv_build"
 
 [dependency-groups]
 dev = [
     "mypy>=1.18.2",
     "ruff>=0.14.2",
 ]
+
+[project.scripts]
+ome_zarr_conformance = "ome_zarr_conformance.ome_zarr_conformance:main"

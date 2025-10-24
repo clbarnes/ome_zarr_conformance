@@ -1,4 +1,11 @@
 #!/usr/bin/env python3
+# /// script
+# requires-python = ">=3.10,<4"
+# dependencies = [
+#     "pooch>=1.8.2",
+#     "pydantic>=2.12.3",
+# ]
+# ///
 from __future__ import annotations
 from argparse import ArgumentParser
 from collections.abc import Iterable
@@ -179,7 +186,7 @@ def main(raw_args: None | list[str] = None):
     )
     parser.add_argument("--no-header", "-H", action="store_true")
     args = parser.parse_args(raw_args)
-    logging.basicConfig(level=logging.DEBUG)
+    logging.basicConfig(level=logging.INFO)
     logging.debug("Got args: %s", args)
 
     if not args.ome_zarr_version:
@@ -217,13 +224,12 @@ def main(raw_args: None | list[str] = None):
             str(res.return_code),
             res.message or "",
         ]
-        match res.status:
-            case "pass":
-                passes += 1
-            case "fail":
-                failures += 1
-            case "error":
-                errors += 1
+        if res.status == "pass":
+            passes += 1
+        elif res.status == "fail":
+            failures += 1
+        elif res.status == "error":
+            errors += 1
 
         print("\t".join(row))
 
@@ -234,8 +240,8 @@ def main(raw_args: None | list[str] = None):
         code += 1
     if errors:
         code += 2
-    return code
+    sys.exit(code)
 
 
 if __name__ == "__main__":
-    sys.exit(main())
+    main()
