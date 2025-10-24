@@ -1,0 +1,17 @@
+[project]
+name = "ome-zarr-conformance"
+version = "0.1.0"
+description = "Conformance tests for any OME-Zarr metadata implementation"
+readme = "README.md"
+requires-python = ">=3.13"
+dependencies = [
+    "pooch>=1.8.2",
+    "pydantic>=2.12.3",
+    "tqdm>=4.67.1",
+]
+
+[dependency-groups]
+dev = [
+    "mypy>=1.18.2",
+    "ruff>=0.14.2",
+]
