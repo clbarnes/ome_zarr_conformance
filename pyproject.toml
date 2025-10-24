@@ -1,5 +1,5 @@
 [project]
-name = "ome-zarr-conformance"
+name = "ome_zarr_conformance"
 version = "0.1.0"
 description = "Conformance tests for any OME-Zarr metadata implementation"
 readme = "README.md"
