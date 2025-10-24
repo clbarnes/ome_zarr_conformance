@@ -45,3 +45,7 @@ The quoted CLI call will be split according to POSIX rules,
 and the JSON payload will be appended as a final argument (effectively in quotes).
 
 Results are returned as a TSV printed to STDOUT.
+
+## TODO
+
+Make this installable, probably as a standalone `uv` script.
