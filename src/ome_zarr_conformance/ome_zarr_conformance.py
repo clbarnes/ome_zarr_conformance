@@ -55,8 +55,37 @@ class TestData:
     zarr_attributes_str: str
     valid: bool
 
-    def slug(self) -> str:
-        return f"{self.case_description or ''}|{self.description or ''}|{self.formerly or ''}"
+    def slug(self) -> str | None:
+        if self.formerly:
+            s = self.formerly.split("/")[-1].lower()
+            suff = ".json"
+            if s.endswith(suff):
+                s = s[: -len(".json")]
+            return s
+        if self.description and self.description != "TBD":
+            return "_".join(self.description.lower().split())
+
+        return None
+
+    def file_stem(self) -> str:
+        s = self.file_name.lower()
+        for suff in (".json", "_suite"):
+            if s.endswith(suff):
+                s = s[: -len(suff)]
+        return s
+
+    def schema_name(self) -> str:
+        s = self.schema_id.lower()
+        for suff in (".json", ".schema"):
+            if s.endswith(suff):
+                s = s[: -len(suff)]
+        for pref in ("schemas/",):
+            if s.startswith(pref):
+                s = s[len(pref) :]
+        return s
+
+    def test_id(self) -> str:
+        return f"v{self.version}:{self.file_stem()}[{self.index}]:{self.slug()}"
 
 
 class CommandOutput(BaseModel):
@@ -180,11 +209,16 @@ def main(raw_args: None | list[str] = None):
         help="which OME-Zarr versions to test with the given command; can be given multiple times (default all available)",
     )
     parser.add_argument(
+        "--no-exit-code",
+        "-X",
+        action="store_true",
+        help="return a 'success' exit code even if tests failed",
+    )
+    parser.add_argument(
         "command",
         type=shlex.split,
         help="command which will try to parse and validate the given JSON",
     )
-    parser.add_argument("--no-header", "-H", action="store_true")
     args = parser.parse_args(raw_args)
     logging.basicConfig(level=logging.INFO)
     logging.debug("Got args: %s", args)
@@ -195,45 +229,42 @@ def main(raw_args: None | list[str] = None):
         versions = args.ome_zarr_version
 
     vtd = [get_data(v) for v in versions]
-    headers = [
-        "version",
-        "file_name",
-        "schema_id",
-        "test_index",
-        "expect_valid",
-        "status",
-        "description",
-        "return_code",
-        "message",
-    ]
-    if not args.no_header:
-        print("\t".join(headers))
 
     passes = 0
     failures = 0
     errors = 0
     for res in run_tests(args.command, vtd):
+        test_id = res.test_data.test_id()
         row = [
-            res.test_data.version,
-            res.test_data.file_name,
-            res.test_data.schema_id,
-            str(res.test_data.index),
-            str(res.test_data.valid).lower(),
+            res.test_data.test_id(),
             res.status,
-            res.test_data.slug(),
-            str(res.return_code),
-            res.message or "",
         ]
         if res.status == "pass":
             passes += 1
         elif res.status == "fail":
             failures += 1
+            logger.warning(
+                "Test %s failed (expected %svalid): %s%s",
+                test_id,
+                "" if res.test_data.valid else "in",
+                res.message or "",
+                "\n" + res.stderr if res.stderr else "",
+            )
         elif res.status == "error":
             errors += 1
+            logger.error(
+                "Test %s errored (code %s):%s",
+                test_id,
+                res.return_code,
+                "\n" + res.stderr if res.stderr else "",
+            )
 
         print("\t".join(row))
 
     logger.info("Got %s passes, %s failures, %s errors", passes, failures, errors)
+
+    if args.no_exit_code:
+        sys.exit(0)
 
     code = 0
     if failures:
