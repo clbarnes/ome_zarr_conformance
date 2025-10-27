@@ -49,7 +49,10 @@ ome-zarr-conformance --ome-zarr-version 0.5 "path/to/my_implementation_wrapper -
 The quoted CLI call will be split according to POSIX rules,
 and the JSON payload will be appended as a final argument (effectively in quotes).
 
-Results are returned as a TSV printed to STDOUT.
+Results are printed to STDOUT as a test ID and `pass`/ `fail`/ `error`, separated by a tab character.
+The test ID contains the OME-Zarr version (e.g. `v0_5`), name of the test case, index of the test in the case,
+and some identifying test slug where possible.
+Failures and errors are logged to STDERR, with any message if given and any captured standard error output.
 
 N.B. while this is packaged to be a pip-installable tool, you can also just vendorise `src/ome_zarr_conformance/ome_zarr_conformance.py` -
 it works as a standalone script.
