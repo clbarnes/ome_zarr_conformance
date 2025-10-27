@@ -13,6 +13,7 @@ from concurrent.futures import Future, ThreadPoolExecutor
 from dataclasses import dataclass
 import json
 from pathlib import Path
+import re
 import sys
 from typing import Literal, Sequence
 from zipfile import ZipFile
@@ -85,7 +86,7 @@ class TestData:
         return s
 
     def test_id(self) -> str:
-        return f"v{self.version}:{self.file_stem()}[{self.index}]:{self.slug()}"
+        return f"v{self.version.replace('.', '_')}:{self.file_stem()}:{self.index}:{self.slug()}"
 
 
 class CommandOutput(BaseModel):
@@ -189,13 +190,34 @@ def run_test(cmd: list[str], test_data: TestData) -> TestResult:
 
 
 def run_tests(
-    cmd: list[str], data: Sequence[VersionTestData], threads=None
+    cmd: list[str],
+    data: Sequence[VersionTestData],
+    includes: list[re.Pattern],
+    excludes: list[re.Pattern],
+    threads=None,
 ) -> Iterable[TestResult]:
-    with ThreadPoolExecutor(threads) as p:
+    with ThreadPoolExecutor(threads) as pool:
         futs: list[Future] = []
         for d in data:
             for t in d.iter_tests():
-                futs.append(p.submit(run_test, cmd, t))
+                test_id = t.test_id()
+                include = False
+                if includes:
+                    for p in includes:
+                        if p.search(test_id):
+                            include = True
+                            break
+                else:
+                    include = True
+
+                if include:
+                    for p in excludes:
+                        if p.search(test_id):
+                            include = False
+                            break
+
+                if include:
+                    futs.append(pool.submit(run_test, cmd, t))
         for f in futs:
             yield f.result()
 
@@ -213,6 +235,20 @@ def main(raw_args: None | list[str] = None):
         "-X",
         action="store_true",
         help="return a 'success' exit code even if tests failed",
+    )
+    parser.add_argument(
+        "--include-pattern",
+        "-p",
+        type=re.compile,
+        action="append",
+        help="regular expression pattern for tests to include",
+    )
+    parser.add_argument(
+        "--exclude-pattern",
+        "-P",
+        type=re.compile,
+        action="append",
+        help="regular expression pattern for tests to exclude",
     )
     parser.add_argument(
         "command",
@@ -233,7 +269,9 @@ def main(raw_args: None | list[str] = None):
     passes = 0
     failures = 0
     errors = 0
-    for res in run_tests(args.command, vtd):
+    for res in run_tests(
+        args.command, vtd, args.include_pattern or [], args.exclude_pattern or []
+    ):
         test_id = res.test_data.test_id()
         row = [
             res.test_data.test_id(),
