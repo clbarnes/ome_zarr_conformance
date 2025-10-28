@@ -1,10 +1,6 @@
 #!/usr/bin/env python3
 # /// script
 # requires-python = ">=3.10,<4"
-# dependencies = [
-#     "pooch>=1.8.2",
-#     "pydantic>=2.12.3",
-# ]
 # ///
 from __future__ import annotations
 from argparse import ArgumentParser
@@ -15,33 +11,49 @@ import json
 from pathlib import Path
 import re
 import sys
-from typing import Literal, Sequence
+from typing import Any, Literal, Self, Sequence
 from zipfile import ZipFile
-import pooch
 import subprocess as sp
 import shlex
-from pydantic import BaseModel, Field
 import logging
+import tempfile
+import os
+from urllib.request import urlretrieve
 
 logger = logging.getLogger(__name__)
 ZIP_URL_TEMPLATE = "https://github.com/ome/ngff/archive/v{version}.zip"
 
 
-class TestCase(BaseModel):
-    description: str | None = None
-    schema_: Schema = Field(alias="schema")
+@dataclass
+class TestCase:
+    description: str | None
+    schema_id: str
     tests: list[Test]
 
+    @classmethod
+    def from_jso(cls, jso: dict[str, Any]) -> Self:
+        return cls(
+            jso.get("description"),
+            jso["schema"]["id"],
+            [Test.from_jso(t) for t in jso["tests"]],
+        )
 
-class Schema(BaseModel):
-    id: str
 
-
-class Test(BaseModel):
-    formerly: str | None = None
-    description: str | None = None
+@dataclass
+class Test:
+    formerly: str | None
+    description: str | None
     data: dict
     valid: bool
+
+    @classmethod
+    def from_jso(cls, jso: dict[str, Any]) -> Self:
+        return cls(
+            jso.get("formerly"),
+            jso.get("description"),
+            jso["data"],
+            bool(jso["valid"]),
+        )
 
 
 @dataclass
@@ -89,9 +101,14 @@ class TestData:
         return f"v{self.version.replace('.', '_')}:{self.file_stem()}:{self.index}:{self.slug()}"
 
 
-class CommandOutput(BaseModel):
+@dataclass
+class CommandOutput:
     valid: bool
-    message: str | None = None
+    message: str | None
+
+    @classmethod
+    def from_jso(cls, jso: dict[str, Any]) -> Self:
+        return cls(jso["valid"], jso.get("message"))
 
 
 @dataclass
@@ -101,13 +118,6 @@ class TestResult:
     message: str | None
     stderr: str
     return_code: int
-
-
-# @dataclass
-# class ExampleData:
-#     version: str
-#     file_name: str
-#     zarr_metadata_str: str
 
 
 @dataclass
@@ -128,7 +138,7 @@ class VersionTestData:
             for idx, test in enumerate(test_case.tests):
                 yield TestData(
                     test_case.description,
-                    test_case.schema_.id,
+                    test_case.schema_id,
                     self.version,
                     file_name,
                     idx,
@@ -139,12 +149,35 @@ class VersionTestData:
                 )
 
 
-def retrieve(version: str):
-    url = ZIP_URL_TEMPLATE.format(version=version)
-    path = pooch.retrieve(
-        url, None, progressbar=True, path=pooch.os_cache("ome_zarr_conformance")
-    )
-    return Path(path)
+def cache_dir() -> Path:
+    """
+    A pale imitation of https://github.com/tox-dev/platformdirs for major desktop OSs.
+    """
+    platform = sys.platform
+    if platform == "linux":
+        return (
+            Path(os.getenv("XDG_CACHE_HOME", "~/.cache")).expanduser()
+            / "ome_zarr_conformance"
+        )
+    if platform == "darwin":
+        return Path("~/Library/Caches").expanduser() / "ome_zarr_conformance"
+    if platform == "win32":
+        appdata = os.getenv("APPDATA")
+        if appdata is not None:
+            return Path(appdata).joinpath("ome/ome_zarr_conformance")
+
+    return Path(tempfile.gettempdir()).joinpath("ome/ome_zarr_conformance")
+
+
+def retrieve(version: str) -> Path:
+    fname = version.replace(".", "_") + ".zip"
+    fdir = cache_dir()
+    fpath = fdir / fname
+    if not fpath.is_file():
+        fdir.mkdir(exist_ok=True, parents=True)
+        url = ZIP_URL_TEMPLATE.format(version=version)
+        urlretrieve(url, fpath)
+    return fpath
 
 
 def get_data(version: str) -> VersionTestData:
@@ -164,7 +197,7 @@ def get_data(version: str) -> VersionTestData:
             test_prefix = "tests/"
             if name.startswith(test_prefix):
                 with z.open(info) as f:
-                    test_case = TestCase.model_validate_json(f.read())
+                    test_case = TestCase.from_jso(json.load(f))
                 test_cases[name[len(test_prefix) :]] = test_case
                 n_tests += len(test_case.tests)
             else:
@@ -182,7 +215,7 @@ def run_test(cmd: list[str], test_data: TestData) -> TestResult:
     res = sp.run([*cmd, test_data.zarr_attributes_str], capture_output=True, text=True)
     if res.returncode:
         return TestResult(test_data, "error", None, res.stderr, res.returncode)
-    out = CommandOutput.model_validate_json(res.stdout)
+    out = CommandOutput.from_jso(json.loads(res.stdout))
     if out.valid == test_data.valid:
         return TestResult(test_data, "pass", out.message, res.stderr, res.returncode)
     else:
@@ -201,8 +234,9 @@ def run_tests(
         for d in data:
             for t in d.iter_tests():
                 test_id = t.test_id()
-                include = False
+
                 if includes:
+                    include = False
                     for p in includes:
                         if p.search(test_id):
                             include = True
@@ -218,6 +252,7 @@ def run_tests(
 
                 if include:
                     futs.append(pool.submit(run_test, cmd, t))
+
         for f in futs:
             yield f.result()
 
