@@ -22,7 +22,7 @@ from urllib.request import urlretrieve
 
 logger = logging.getLogger(__name__)
 ZIP_URL_TEMPLATE = "https://github.com/ome/ngff/archive/v{version}.zip"
-
+OME_ZARR_VERSIONS = ("0.4", "0.5")
 
 @dataclass
 class TestCase:
@@ -312,7 +312,7 @@ def main(raw_args: None | list[str] = None):
     logging.debug("Got args: %s", args)
 
     if not args.ome_zarr_version:
-        versions = ["0.4", "0.5"]
+        versions = OME_ZARR_VERSIONS
     else:
         versions = args.ome_zarr_version
 
