@@ -173,10 +173,14 @@ def retrieve(version: str) -> Path:
     fname = version.replace(".", "_") + ".zip"
     fdir = cache_dir()
     fpath = fdir / fname
-    if not fpath.is_file():
+    if fpath.is_file():
+        logger.debug("Using cached archive at %s", fpath)
+    else:
         fdir.mkdir(exist_ok=True, parents=True)
         url = ZIP_URL_TEMPLATE.format(version=version)
+        logger.info("Downloading archive from %s to %s", url, fpath)
         urlretrieve(url, fpath)
+
     return fpath
 
 
@@ -276,14 +280,21 @@ def main(raw_args: None | list[str] = None):
         "-p",
         type=re.compile,
         action="append",
-        help="regular expression pattern for tests to include",
+        help="regular expression pattern for tests to include; can be given multiple times",
     )
     parser.add_argument(
         "--exclude-pattern",
         "-P",
         type=re.compile,
         action="append",
-        help="regular expression pattern for tests to exclude",
+        help="regular expression pattern for tests to exclude; can be given multiple times",
+    )
+    parser.add_argument(
+        "--verbose",
+        "-v",
+        action="count",
+        default=0,
+        help="increase logging verbosity; can be repeated",
     )
     parser.add_argument(
         "command",
@@ -291,7 +302,13 @@ def main(raw_args: None | list[str] = None):
         help="command which will try to parse and validate the given JSON",
     )
     args = parser.parse_args(raw_args)
-    logging.basicConfig(level=logging.INFO)
+    lvl = {
+        0: logging.ERROR,
+        1: logging.WARNING,
+        2: logging.INFO,
+        3: logging.DEBUG,
+    }.get(args.verbose, logging.DEBUG)
+    logging.basicConfig(level=lvl)
     logging.debug("Got args: %s", args)
 
     if not args.ome_zarr_version:
