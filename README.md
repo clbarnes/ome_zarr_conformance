@@ -18,9 +18,9 @@ a JSON string representing the Zarr attributes of an OME-Zarr dataset (Zarr grou
 > or in the `.zattrs` file for a Zarr v2 group prefix.
 >
 > In OME-Zarr v0.4, OME-Zarr metadata keys are directly in the top-level attributes,
-> so your payload may look like `{"plate": {"version": "0.4", ...}, "well": {"version": "0.4", ...}}`.
+> so your payload may look like `{"plate": {"version": "0.4", ... }}`.
 > In OME-Zarr v0.5 and above, OME-Zarr metadata keys are beneath an `"ome"` key,
-> so your payload should look like `{"ome": {"version": ..., ...}}`.
+> so your payload may look like `{"ome": {"version": "0.5", "plate": { ... }}}`.
 
 The program should attempt to parse that string and print to STDOUT another JSON string, with fields
 
@@ -91,7 +91,9 @@ and zero additional work for implementation maintainers as the test suite grows.
 This tool only handles one Zarr attributes object at a time, and only that one Zarr attributes object.
 There are a number of rules in the spec which cannot be validated in this way, for example those relating to
 
-- zarr hierarchies (e.g. that a string is a valid path to another zarr node)
+- zarr hierarchies
+  (e.g. that a string is a valid path to another zarr node,
+  or that the OME well group exists below an OME plate group)
 - zarr arrays (e.g. that an array has a particular `shape` or `data_type`)
 
 This is by design, so that OME-Zarr metadata implementations can stay independent of Zarr implementations,
