@@ -74,3 +74,25 @@ Failures and errors are logged to STDERR, with any message if given and any capt
 
 N.B. while this is packaged to be a pip-installable tool, you can also just vendorise `src/ome_zarr_conformance/ome_zarr_conformance.py` -
 it works as a standalone script.
+
+## Motivations
+
+JSON Schema is fine for specifying the rough shape of data at the level of individual fields,
+but is not sufficient for schema-level rules like "field `a` must have the same length as field `b`".
+
+There are going to be many implementations of the OME-Zarr specification,
+across multiple languages,
+so a lot of duplicated effort for writing integration tests (or worse, not spending that effort!).
+These can act as integration tests for any implementation by writing a single trivial CLI,
+and zero additional work for implementation maintainers as the test suite grows.
+
+## Limitations
+
+This tool only handles one Zarr attributes object at a time, and only that one Zarr attributes object.
+There are a number of rules in the spec which cannot be validated in this way, for example those relating to
+
+- zarr hierarchies (e.g. that a string is a valid path to another zarr node)
+- zarr arrays (e.g. that an array has a particular `shape` or `data_type`)
+
+This is by design, so that OME-Zarr metadata implementations can stay independent of Zarr implementations,
+and to greatly simplify the fixtures.
