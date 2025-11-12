@@ -11,7 +11,7 @@ although pipx or pip may work for your use case.
 
 Install the tool for your user with `uv tool install https://github.com/clbarnes/ome_zarr_conformance.git`.
 
-Wrap your OME-Zarr metadata implementation in a CLI program which takes as an argument
+Wrap your OME-Zarr metadata implementation in a dingus CLI program which takes as an argument
 a JSON string representing the Zarr attributes of an OME-Zarr dataset (Zarr group).
 
 > Zarr attributes are found in the `"attributes"` key of a Zarr v3 metadata document,
@@ -29,7 +29,7 @@ The program should attempt to parse that string and print to STDOUT another JSON
 
 The program should not error for invalid OME-Zarr metadata, but may error if malformed JSON is given.
 
-A fictional OME-Zarr metadata implementation based on python/ pydantic could provide a CLI like this:
+A fictional OME-Zarr metadata implementation based on python/ pydantic could provide a dingus CLI like this:
 
 ```python
 #!/usr/bin/env python3
@@ -96,3 +96,13 @@ There are a number of rules in the spec which cannot be validated in this way, f
 
 This is by design, so that OME-Zarr metadata implementations can stay independent of Zarr implementations,
 and to greatly simplify the fixtures.
+
+### Dingus CLIs for permissive readers
+
+Some implementations are very permissive readers - they may deserialise to an unstructured format
+(e.g. python dicts of dicts) and then only look up attributes when they need them.
+This could cause false negatives for text fixtures containing invalid OME-Zarr metadata.
+
+Such libraries should still be able to validate metadata to prevent invalid writes
+(or make it impossible to represent invalid metadata);
+the dingus may be a little more complicated to use the write-validation rather than just the parse-validation.
