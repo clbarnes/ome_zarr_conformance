@@ -9,13 +9,13 @@ Supports OME-Zarr version 0.4 and above.
 [`uv` is recommended](https://docs.astral.sh/uv/getting-started/installation/),
 although pipx or pip may work for your use case.
 
-Install the tool for your user  with `uv tool install https://github.com/clbarnes/ome_zarr_conformance.git`.
+Install the tool for your user with `uv tool install https://github.com/clbarnes/ome_zarr_conformance.git`.
 
 Wrap your OME-Zarr metadata implementation in a CLI program which takes as an argument
 a JSON string representing the Zarr attributes of an OME-Zarr dataset (Zarr group).
 
 > Zarr attributes are found in the `"attributes"` key of a Zarr v3 metadata document,
-or in the `.zattrs` file for a Zarr v2 group prefix.
+> or in the `.zattrs` file for a Zarr v2 group prefix.
 >
 > In OME-Zarr v0.4, OME-Zarr metadata keys are directly in the top-level attributes,
 > so your payload may look like `{"plate": {"version": "0.4", ...}, "well": {"version": "0.4", ...}}`.
@@ -29,7 +29,25 @@ The program should attempt to parse that string and print to STDOUT another JSON
 
 The program should not error for invalid OME-Zarr metadata, but may error if malformed JSON is given.
 
-For a program `path/to/my_implementation_wrapper`, call
+A fictional OME-Zarr metadata implementation based on python/ pydantic could provide a CLI like this:
+
+```python
+#!/usr/bin/env python3
+import sys
+import json
+
+from my_ome_zarr_pydantic.v0_5 import OMEZarrGroupAttrs, InvalidOMEZarrException
+
+try:
+    OMEZarrGroupAttrs.model_validate_json(sys.argv[1])
+    out = {"valid": True}
+except InvalidOMEZarrException as e:
+    out = {"valid": False, "message": str(e)}
+
+print(json.dumps(out))
+```
+
+For such a program at `path/to/my_implementation_wrapper`, call
 
 ```sh
 ome-zarr-conformance path/to/my_implementation_wrapper
