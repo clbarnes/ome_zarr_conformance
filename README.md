@@ -1,3 +1,6 @@
+> This repository is archived as the functionality has been rolled into
+> <https://github.com/ome/ngff-spec>
+
 # OME-Zarr conformance tests
 
 A python-based tool to run arbitrary OME-Zarr metadata implementations against a full suite of conformance tests.
